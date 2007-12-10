@@ -322,8 +322,21 @@ shm_access(ClientPtr client, SHMPERM_TYPE * perm, int readonly)
     mode_t mask;
     int uidset = 0, gidset = 0;
     LocalClientCredRec *lcc;
+    Bool is_ssh = FALSE;
 
     if (GetLocalClientCreds(client, &lcc) != -1) {
+#ifdef linux
+	if (lcc->fieldsSet & LCC_PID_SET) {
+	    /* ssh isn't actually a local client */
+	    char exe[64], buf[64];
+
+	    memset(buf, 0, 64);
+	    snprintf(exe, 64, "/proc/%d/exe", lcc->pid);
+	    readlink(exe, buf, 63);
+	    if (strstr(buf, "/ssh"))
+		is_ssh = TRUE;
+	}
+#endif
 
         if (lcc->fieldsSet & LCC_UID_SET) {
             uid = lcc->euid;
@@ -342,6 +355,9 @@ shm_access(ClientPtr client, SHMPERM_TYPE * perm, int readonly)
         }
 #endif
         FreeLocalClientCreds(lcc);
+
+        if (is_ssh)
+            return -1;
 
         if (uidset) {
             /* User id 0 always gets access */
