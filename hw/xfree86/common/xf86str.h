@@ -508,9 +508,12 @@ typedef struct _confdrirec {
 } confDRIRec, *confDRIPtr;
 
 /* These values should be adjusted when new fields are added to ScrnInfoRec */
-#define NUM_RESERVED_INTS		16
+#define NUM_RESERVED_INTS		15
 #define NUM_RESERVED_POINTERS		14
 #define NUM_RESERVED_FUNCS		10
+
+/* let clients know they can use this */
+#define XF86_SCRN_HAS_PREFER_CLONE 1
 
 typedef pointer (*funcPointer) (void);
 
@@ -768,6 +771,9 @@ typedef struct _ScrnInfoRec {
     /* Storage for clockRanges and adjustFlags for use with the VidMode ext */
     ClockRangePtr clockRanges;
     int adjustFlags;
+
+    /* initial rightof support disable */
+    int                 preferClone;
 
     /*
      * These can be used when the minor ABI version is incremented.
