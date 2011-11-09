@@ -1705,7 +1705,6 @@ if test "x$XORG" = xyes; then
 		  	linux_alpha=yes
 			;;
 		  i*86|amd64*|x86_64*|ia64*)
-			linux_acpi="yes"
 			;;
 		  *)
 			;;
