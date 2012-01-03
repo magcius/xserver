@@ -361,7 +361,7 @@ SELinuxDefaultClientLabel(void)
 void
 SELinuxLabelInit(void)
 {
-    struct selinux_opt selabel_option = { SELABEL_OPT_VALIDATE, (char *) 1 };
+    struct selinux_opt selabel_option = { SELABEL_OPT_VALIDATE, { (char *)1 } };
 
     label_hnd = selabel_open(SELABEL_CTX_X, &selabel_option, 1);
     if (!label_hnd)
