@@ -851,7 +851,7 @@ SELinuxFlaskReset(void)
 void
 SELinuxFlaskInit(void)
 {
-    struct selinux_opt avc_option = { AVC_OPT_SETENFORCE, (char *) 0 };
+    struct selinux_opt avc_option = { AVC_OPT_SETENFORCE, { (char *) 0 } };
     security_context_t ctx;
     int ret = TRUE;
 
