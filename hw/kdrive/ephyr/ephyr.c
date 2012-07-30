@@ -911,7 +911,7 @@ ephyrPoll(void)
                     }
                     EPHYR_LOG("final (x,y):(%d,%d)\n", x, y);
 #endif
-                    KdEnqueuePointerEvent(ephyrMouse, mouseState, x, y, 0);
+                    KdEnqueuePointerEvent(ephyrMouse, mouseState | KD_MOUSE_DELTA, x, y, 0);
                 }
             }
             break;
