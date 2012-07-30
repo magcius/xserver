@@ -99,6 +99,9 @@ struct EphyrHostXVars {
     Bool use_fullscreen;
     Bool have_shm;
 
+    int last_x;
+    int last_y;
+
     int n_screens;
     struct EphyrHostScreen *screens;
 
@@ -928,11 +931,14 @@ hostx_get_event(EphyrHostXEvent * ev)
                 host_screen_from_window(xev.xmotion.window);
 
             ev->type = EPHYR_EV_MOUSE_MOTION;
-            ev->data.mouse_motion.x = xev.xmotion.x;
-            ev->data.mouse_motion.y = xev.xmotion.y;
+            ev->data.mouse_motion.x = xev.xmotion.x - HostX.last_x;
+            ev->data.mouse_motion.y = xev.xmotion.y - HostX.last_y;
             ev->data.mouse_motion.window = xev.xmotion.window;
             ev->data.mouse_motion.screen =
                 (host_screen ? host_screen->mynum : -1);
+
+            HostX.last_x = xev.xmotion.x;
+            HostX.last_y = xev.xmotion.y;
         }
             return 1;
 
