@@ -1613,8 +1613,8 @@ static Bool constrain_all_screen_crtcs(DeviceIntPtr pDev, ScreenPtr pScreen, int
 }
 
 void
-RRConstrainCursorHarder(DeviceIntPtr pDev, ScreenPtr pScreen, int mode, int *x,
-                        int *y)
+RRConstrainCursorHarder(DeviceIntPtr pDev, ScreenPtr pScreen, int mode,
+                        int *x, int *y, int unclamped_x, int unclamped_y)
 {
     rrScrPriv(pScreen);
     Bool ret;

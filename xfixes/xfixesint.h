@@ -59,7 +59,9 @@
 #include "windowstr.h"
 #include "selection.h"
 #include "xfixes.h"
+#include "list.h"
 
+extern unsigned char XFixesReqCode;
 extern int XFixesEventBase;
 
 typedef struct _XFixesClient {
@@ -289,6 +291,30 @@ int
 
 int
  SProcXFixesDestroyPointerBarrier(ClientPtr client);
+
+/* Version 6 */
+
+int
+ProcXFixesSelectBarrierInput (ClientPtr client);
+
+int
+SProcXFixesSelectBarrierInput (ClientPtr client);
+
+int
+ProcXFixesCreatePointerBarrierVelocity (ClientPtr client);
+
+int
+SProcXFixesCreatePointerBarrierVelocity (ClientPtr client);
+
+int
+ProcXFixesBarrierReleasePointer (ClientPtr client);
+
+int
+SProcXFixesBarrierReleasePointer (ClientPtr client);
+
+void
+SXFixesBarrierNotifyEvent(xXFixesBarrierNotifyEvent * from,
+                          xXFixesBarrierNotifyEvent * to);
 
 /* Xinerama */
 extern int (*PanoramiXSaveXFixesVector[XFixesNumberRequests]) (ClientPtr);

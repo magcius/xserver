@@ -271,7 +271,7 @@ miPointerSetCursorPosition(DeviceIntPtr pDev, ScreenPtr pScreen,
     pPointer->generateEvent = generateEvent;
 
     if (pScreen->ConstrainCursorHarder)
-        pScreen->ConstrainCursorHarder(pDev, pScreen, Absolute, &x, &y);
+        pScreen->ConstrainCursorHarder(pDev, pScreen, Absolute, &x, &y, 0, 0);
 
     /* device dependent - must pend signal and call miPointerWarpCursor */
     (*pScreenPriv->screenFuncs->WarpCursor) (pDev, pScreen, x, y);
@@ -562,10 +562,13 @@ miPointerMoveNoEvent(DeviceIntPtr pDev, ScreenPtr pScreen, int x, int y)
  * @param mode Movement mode (Absolute or Relative)
  * @param[in,out] screenx The x coordinate in desktop coordinates
  * @param[in,out] screeny The y coordinate in desktop coordinates
+ * @param unclamped_x The unclamped x coordinate in screen coordinates
+ * @param unclamped_x The unclamped y coordinate in screen coordinates
  */
 ScreenPtr
-miPointerSetPosition(DeviceIntPtr pDev, int mode, double *screenx,
-                     double *screeny)
+miPointerSetPosition(DeviceIntPtr pDev, int mode,
+                     double *screenx, double *screeny,
+                     int unclamped_x, int unclamped_y)
 {
     miPointerScreenPtr pScreenPriv;
     ScreenPtr pScreen;
@@ -614,7 +617,8 @@ miPointerSetPosition(DeviceIntPtr pDev, int mode, double *screenx,
         y = pPointer->limits.y2 - 1;
 
     if (pScreen->ConstrainCursorHarder)
-        pScreen->ConstrainCursorHarder(pDev, pScreen, mode, &x, &y);
+        pScreen->ConstrainCursorHarder(pDev, pScreen, mode, &x, &y,
+                                       unclamped_x, unclamped_y);
 
     if (pPointer->x != x || pPointer->y != y || pPointer->pScreen != pScreen)
         miPointerMoveNoEvent(pDev, pScreen, x, y);

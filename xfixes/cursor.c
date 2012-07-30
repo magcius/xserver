@@ -56,11 +56,14 @@
 #include "windowstr.h"
 #include "xace.h"
 #include "list.h"
+#include "mi.h"
+#include "eventstr.h"
 
 static RESTYPE CursorClientType;
 static RESTYPE CursorHideCountType;
 static RESTYPE CursorWindowType;
 RESTYPE PointerBarrierType;
+static RESTYPE PointerBarrierClientType;
 static CursorPtr CursorCurrent[MAXDEVICES];
 
 static DevPrivateKeyRec CursorScreenPrivateKeyRec;
@@ -130,6 +133,7 @@ typedef struct _CursorScreen {
     ConstrainCursorHarderProcPtr ConstrainCursorHarder;
     CursorHideCountPtr pCursorHideCounts;
     struct xorg_list barriers;
+    struct xorg_list barrierClients;
 } CursorScreenRec, *CursorScreenPtr;
 
 #define GetCursorScreen(s) ((CursorScreenPtr)dixLookupPrivate(&(s)->devPrivates, CursorScreenPrivateKey))
@@ -1209,17 +1213,141 @@ barrier_clamp_to_barrier(struct PointerBarrier *barrier, int dir, int *x,
 }
 
 static void
+QueueBarrierEvent(CursorScreenPtr cs, DeviceIntPtr dev,
+                  Time time, BarrierEvent *template)
+{
+    PointerBarrierEventClientPtr client;
+
+    xorg_list_for_each_entry(client, &cs->barrierClients, entry) {
+        BarrierEvent ev;
+
+        if (client->barrier != template->barrierid)
+            continue;
+
+        if ((client->eventMask & (1L << template->event_type)) == 0)
+            continue;
+
+        ev = *template;
+
+        ev.dt = time - client->last_timestamp;
+        ev.window = client->window->drawable.id;
+        client->last_timestamp = time;
+
+        mieqEnqueue(dev, (InternalEvent *) &ev);
+    }
+}
+
+static void
+clamp_barrier_and_fill_event (struct PointerBarrier *barrier, int *x, int *y,
+                              int dir, BarrierEvent *event)
+{
+    if (!barrier->lastHit) {
+        /* This is the start of a new barrier event */
+        barrier->barrierEventID++;
+    }
+
+    event->event_id = barrier->barrierEventID;
+    event->barrierid = barrier->barrier;
+
+    if (barrier->barrierEventID == barrier->releaseEventID) {
+        event->event_type = XFixesBarrierPointerReleasedNotify;
+    } else {
+        event->event_type = XFixesBarrierHitNotify;
+
+        barrier_clamp_to_barrier(barrier, dir, x, y);
+        barrier->hit = TRUE;
+    }
+}
+
+#define INT_TO_FP3232(x) ((FP3232) { (x), 0 })
+
+static void
+BarrierEventHandler(int screenNum, InternalEvent *e, DeviceIntPtr dev)
+{
+    BarrierEvent *be = &e->barrier_event;
+    WindowPtr pWin;
+    int rc;
+    Mask filter;
+    xXFixesBarrierNotifyEvent ev = {
+        .type = GenericEvent,
+        .extension = XFixesReqCode,
+        .sequenceNumber = 0,
+        .length = 9,
+        .evtype = XFixesBarrierNotify,
+        .window = be->window,
+        .deviceid = dev->id,
+        .x = be->x,
+        .y = be->y,
+        .dx = INT_TO_FP3232(be->dx),
+        .dy = INT_TO_FP3232(be->dy),
+        .raw_dx = INT_TO_FP3232(be->raw_dx),
+        .raw_dy = INT_TO_FP3232(be->raw_dy),
+        .dt = be->dt,
+        .event_type = be->event_type,
+        .event_id = be->event_id,
+        .barrier = be->barrierid,
+        .timestamp = be->time,
+    };
+
+    filter = GetEventFilter(dev, (xEvent *) &ev);
+    rc = dixLookupWindow(&pWin, be->window, serverClient, DixSendAccess);
+    if (rc != Success)
+        return;
+
+    DeliverEventsToWindow(dev, pWin, (xEvent *) &ev, 1, filter, NullGrab);
+}
+
+void
+SXFixesBarrierNotifyEvent(xXFixesBarrierNotifyEvent * from,
+                          xXFixesBarrierNotifyEvent * to) {
+    to->type = from->type;
+
+    cpswaps(from->x, to->x);
+    cpswaps(from->y, to->y);
+    cpswaps(from->dt, to->dt);
+    cpswapl(from->length, to->length);
+    cpswapl(from->timestamp, to->timestamp);
+
+    cpswaps(from->event_type, to->event_type);
+    cpswapl(from->event_id, to->event_id);
+    cpswapl(from->barrier, to->barrier);
+    cpswapl(from->window, to->window);
+
+#define SWAP_FP3232(x, y)                       \
+    do {                                        \
+        cpswapl((x).integral, (y).integral);    \
+        cpswapl((x).frac, (y).frac);            \
+    } while(0)
+
+    SWAP_FP3232(from->dx, to->dx);
+    SWAP_FP3232(from->dy, to->dy);
+    SWAP_FP3232(from->raw_dx, to->raw_dx);
+    SWAP_FP3232(from->raw_dy, to->raw_dy);
+}
+
+static void
 CursorConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
-                            int *x, int *y)
+                            int *x, int *y, int unclamped_x, int unclamped_y)
 {
     CursorScreenPtr cs = GetCursorScreen(screen);
+    Time ms = GetTimeInMillis();
 
     if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev) &&
         mode == Relative) {
         int ox, oy;
+        int dx, dy;
         int dir;
         int i;
         struct PointerBarrier *nearest = NULL;
+        PointerBarrierClientPtr c;
+        BarrierEvent ev = {
+            .header = ET_Internal,
+            .type = ET_BarrierNotify,
+            .length = sizeof (BarrierEvent),
+            .time = ms,
+            .deviceid = dev->id,
+            .sourceid = dev->id,
+        };
 
         /* where are we coming from */
         miPointerGetPosition(dev, &ox, &oy);
@@ -1232,6 +1360,8 @@ CursorConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
          * destination, again finding the nearest barrier and clamping.
          */
         dir = barrier_get_direction(ox, oy, *x, *y);
+        dx = unclamped_x - ox;
+        dy = unclamped_y - oy;
 
 #define MAX_BARRIERS 2
         for (i = 0; i < MAX_BARRIERS; i++) {
@@ -1239,7 +1369,7 @@ CursorConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
             if (!nearest)
                 break;
 
-            barrier_clamp_to_barrier(nearest, dir, x, y);
+            clamp_barrier_and_fill_event (nearest, x, y, dir, &ev);
 
             if (barrier_is_vertical(nearest)) {
                 dir &= ~(BarrierNegativeX | BarrierPositiveX);
@@ -1249,12 +1379,28 @@ CursorConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
                 dir &= ~(BarrierNegativeY | BarrierPositiveY);
                 oy = *y;
             }
+
+            ev.x = *x;
+            ev.y = *y;
+            ev.dx = dx;
+            ev.dy = dy;
+
+            /* FIXME: add proper raw dx/dy */
+            ev.raw_dx = dx;
+            ev.raw_dy = dy;
+
+            QueueBarrierEvent (cs, dev, ms, &ev);
+        }
+
+        xorg_list_for_each_entry(c, &cs->barriers, entry) {
+            c->barrier.lastHit = c->barrier.hit;
+            c->barrier.hit = FALSE;
         }
     }
 
     if (cs->ConstrainCursorHarder) {
         screen->ConstrainCursorHarder = cs->ConstrainCursorHarder;
-        screen->ConstrainCursorHarder(dev, screen, mode, x, y);
+        screen->ConstrainCursorHarder(dev, screen, mode, x, y, unclamped_x, unclamped_y);
         screen->ConstrainCursorHarder = CursorConstrainCursorHarder;
     }
 }
@@ -1264,15 +1410,17 @@ CreatePointerBarrierClient(ScreenPtr screen, ClientPtr client,
                            xXFixesCreatePointerBarrierReq * stuff)
 {
     CursorScreenPtr cs = GetCursorScreen(screen);
-    struct PointerBarrierClient *ret = malloc(sizeof(*ret));
+    struct PointerBarrierClient *ret = calloc(sizeof(*ret), 1);
 
     if (ret) {
         ret->screen = screen;
+        ret->barrier.barrier = stuff->barrier;
         ret->barrier.x1 = min(stuff->x1, stuff->x2);
         ret->barrier.x2 = max(stuff->x1, stuff->x2);
         ret->barrier.y1 = min(stuff->y1, stuff->y2);
         ret->barrier.y2 = max(stuff->y1, stuff->y2);
         ret->barrier.directions = mask_directions(&ret->barrier, stuff->directions);
+        ret->barrier.barrierEventID = 0;
         xorg_list_add(&ret->entry, &cs->barriers);
     }
 
@@ -1397,6 +1545,140 @@ SProcXFixesDestroyPointerBarrier(ClientPtr client)
     return ProcXFixesVector[stuff->xfixesReqType] (client);
 }
 
+static int
+CursorFreeBarrierClient(void *data, XID id)
+{
+    PointerBarrierEventClientPtr client = data, c;
+    ScreenPtr screen = client->screen;
+    CursorScreenPtr cs = GetCursorScreen(screen);
+
+    /* find and unlink from the screen private */
+    xorg_list_for_each_entry(c, &cs->barrierClients, entry) {
+        if (c == client) {
+            xorg_list_del(&c->entry);
+            break;
+        }
+    }
+
+    free(client);
+    return Success;
+}
+
+static struct PointerBarrierEventClient *
+CreatePointerBarrierEventClient(WindowPtr window, ClientPtr client,
+                                xXFixesSelectBarrierInputReq *stuff)
+{
+    ScreenPtr screen = window->drawable.pScreen;
+    CursorScreenPtr cs = GetCursorScreen(screen);
+    struct PointerBarrierEventClient *ret = malloc(sizeof(*ret));
+
+    if (ret) {
+        ret->screen = screen;
+        ret->client = client;
+        ret->window = window;
+        ret->barrier = stuff->barrier;
+        ret->eventMask = stuff->eventMask;
+        ret->resource = FakeClientID (client->index);
+        xorg_list_add(&ret->entry, &cs->barrierClients);
+    }
+
+    return ret;
+}
+
+int
+ProcXFixesSelectBarrierInput (ClientPtr client)
+{
+    int err;
+    WindowPtr pWin;
+    struct PointerBarrierEventClient *eventClient;
+    REQUEST (xXFixesSelectBarrierInputReq);
+
+    REQUEST_SIZE_MATCH(xXFixesSelectBarrierInputReq);
+
+    err = dixLookupWindow(&pWin, stuff->window, client, DixReadAccess);
+    if (err != Success) {
+        client->errorValue = stuff->window;
+        return err;
+    }
+
+    if (!(eventClient = CreatePointerBarrierEventClient(pWin,
+                                                        client,
+                                                        stuff)))
+      return BadAlloc;
+
+    if (!AddResource (eventClient->resource, PointerBarrierClientType, eventClient))
+      return BadAlloc;
+
+    return Success;
+}
+
+int
+SProcXFixesSelectBarrierInput (ClientPtr client)
+{
+    REQUEST(xXFixesSelectBarrierInputReq);
+
+    swaps(&stuff->length);
+    REQUEST_SIZE_MATCH(xXFixesSelectBarrierInputReq);
+    swapl(&stuff->eventMask);
+    return ProcXFixesVector[stuff->xfixesReqType](client);
+}
+
+int
+ProcXFixesBarrierReleasePointer (ClientPtr client)
+{
+    int i, err;
+    CARD32 *arr;
+    struct PointerBarrier *barrier;
+    REQUEST (xXFixesBarrierReleasePointerReq);
+    REQUEST_SIZE_MATCH(xXFixesBarrierReleasePointerReq);
+
+    arr = (CARD32 *) ((char *)stuff + sizeof(*stuff));
+    for (i = 0; i < stuff->num_barriers; i++) {
+        CARD32 barrier_id, event_id;
+
+        barrier_id = arr[0];
+        event_id = arr[1];
+
+        err = dixLookupResourceByType((void **)&barrier, barrier_id,
+                                      PointerBarrierType, client,
+                                      DixReadAccess);
+        if (err != Success) {
+            client->errorValue = barrier_id;
+            return err;
+        }
+ 
+        barrier->releaseEventID = event_id;
+
+        arr += 2;
+    }
+
+
+    return Success;
+}
+
+int
+SProcXFixesBarrierReleasePointer (ClientPtr client)
+{
+    int i;
+    CARD32 *swap_me;
+
+    REQUEST(xXFixesBarrierReleasePointerReq);
+
+    swaps(&stuff->length);
+    swaps(&stuff->num_barriers);
+    REQUEST_SIZE_MATCH(xXFixesBarrierReleasePointerReq);
+
+    swap_me = (CARD32 *) ((char *)stuff + sizeof (*stuff));
+    for (i = 0; i < stuff->num_barriers; i++) {
+        swapl(swap_me);
+        swapl(swap_me + 1);
+
+        ++swap_me;
+    }
+
+    return ProcXFixesVector[stuff->xfixesReqType](client);
+}
+
 Bool
 XFixesCursorInit(void)
 {
@@ -1416,6 +1698,7 @@ XFixesCursorInit(void)
         if (!cs)
             return FALSE;
         xorg_list_init(&cs->barriers);
+        xorg_list_init(&cs->barrierClients);
         Wrap(cs, pScreen, CloseScreen, CursorCloseScreen);
         Wrap(cs, pScreen, DisplayCursor, CursorDisplayCursor);
         Wrap(cs, pScreen, ConstrainCursorHarder, CursorConstrainCursorHarder);
@@ -1430,7 +1713,12 @@ XFixesCursorInit(void)
                                              "XFixesCursorWindow");
     PointerBarrierType = CreateNewResourceType(CursorFreeBarrier,
                                                "XFixesPointerBarrier");
+    PointerBarrierClientType = CreateNewResourceType(CursorFreeBarrierClient,
+                                                     "XFixesPointerBarrierClient");
+
+    mieqInit();
+    mieqSetHandler(ET_BarrierNotify, BarrierEventHandler);
 
     return CursorClientType && CursorHideCountType && CursorWindowType &&
-        PointerBarrierType;
+        PointerBarrierType && PointerBarrierClientType;
 }

@@ -72,6 +72,7 @@ enum EventType {
     ET_RawTouchUpdate,
     ET_RawTouchEnd,
     ET_XQuartz,
+    ET_BarrierNotify,
     ET_Internal = 0xFF          /* First byte */
 };
 
@@ -227,6 +228,26 @@ struct _RawDeviceEvent {
     uint32_t flags;       /**< Flags to be copied into the generated event */
 };
 
+struct _BarrierEvent {
+    unsigned char header; /**<  Always ET_Internal */
+    enum EventType type;  /**<  ET_BarrierNotify */
+    int length;           /**<  Length in bytes */
+    Time time;            /**<  Time in ms */
+    int deviceid;         /**< Device to post this event for */
+    int sourceid;         /**< The physical source device */
+    int barrierid;
+    Window window;
+    int16_t x;
+    int16_t y;
+    int32_t dx;
+    int32_t dy;
+    int32_t raw_dx;
+    int32_t raw_dy;
+    int16_t dt;
+    int16_t event_type;
+    int32_t event_id;
+};
+
 #ifdef XQUARTZ
 #define XQUARTZ_EVENT_MAXARGS 5
 struct _XQuartzEvent {
@@ -253,6 +274,7 @@ union _InternalEvent {
     DeviceEvent device_event;
     DeviceChangedEvent changed_event;
     TouchOwnershipEvent touch_ownership_event;
+    BarrierEvent barrier_event;
 #if XFreeXDGA
     DGAEvent dga_event;
 #endif

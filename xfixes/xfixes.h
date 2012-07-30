@@ -28,6 +28,7 @@
 #define _XFIXES_H_
 
 #include "resource.h"
+#include "list.h"
 
 extern _X_EXPORT RESTYPE RegionResType;
 extern _X_EXPORT RESTYPE PointerBarrierType;
@@ -52,9 +53,26 @@ extern _X_EXPORT int XFixesErrorBase;
 extern _X_EXPORT RegionPtr
  XFixesRegionCopy(RegionPtr pRegion);
 
+typedef struct PointerBarrierEventClient *PointerBarrierEventClientPtr;
+
+struct PointerBarrierEventClient {
+    ScreenPtr screen;
+    ClientPtr client;
+    WindowPtr window;
+    CARD32    eventMask;
+    int last_timestamp;
+    XID barrier;
+    XID resource;
+    struct xorg_list entry;
+};
+
 struct PointerBarrier {
+    XID    barrier;
     CARD16 x1, x2, y1, y2;
     CARD32 directions;
+    CARD32 barrierEventID;
+    CARD32 releaseEventID;
+    Bool   hit, lastHit;
 };
 
 extern int

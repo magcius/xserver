@@ -339,7 +339,7 @@ typedef void (*DeviceCursorCleanupProcPtr) (DeviceIntPtr /* pDev */ ,
                                             ScreenPtr /* pScreen */ );
 
 typedef void (*ConstrainCursorHarderProcPtr) (DeviceIntPtr, ScreenPtr, int,
-                                              int *, int *);
+                                              int *, int *, int, int);
 
 
 typedef Bool (*SharePixmapBackingProcPtr)(PixmapPtr, ScreenPtr, void **);

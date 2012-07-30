@@ -944,7 +944,9 @@ positionSprite(DeviceIntPtr dev, int mode, ValuatorMask *mask,
     /* miPointerSetPosition takes care of crossing screens for us, as well as
      * clipping to the current screen. Coordinates returned are in desktop
      * coord system */
-    scr = miPointerSetPosition(dev, mode, screenx, screeny);
+    scr = miPointerSetPosition(dev, mode, screenx, screeny,
+                               (int)floor(*screenx) - scr->x,
+                               (int)floor(*screeny) - scr->y);
 
     /* If we were constrained, rescale x/y from the screen coordinates so
      * the device valuators reflect the correct position. For screen

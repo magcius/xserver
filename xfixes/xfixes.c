@@ -50,7 +50,7 @@
 #include "protocol-versions.h"
 #include "extinit.h"
 
-static unsigned char XFixesReqCode;
+unsigned char XFixesReqCode;
 int XFixesEventBase;
 int XFixesErrorBase;
 
@@ -103,6 +103,7 @@ static const int version_requests[] = {
     X_XFixesExpandRegion,       /* Version 3 */
     X_XFixesShowCursor,         /* Version 4 */
     X_XFixesDestroyPointerBarrier,      /* Version 5 */
+    X_XFixesBarrierReleasePointer, /* Version 6 */
 };
 
 #define NUM_VERSION_REQUESTS	(sizeof (version_requests) / sizeof (version_requests[0]))
@@ -141,7 +142,10 @@ int (*ProcXFixesVector[XFixesNumberRequests]) (ClientPtr) = {
 /*************** Version 4 ****************/
         ProcXFixesHideCursor, ProcXFixesShowCursor,
 /*************** Version 5 ****************/
-ProcXFixesCreatePointerBarrier, ProcXFixesDestroyPointerBarrier,};
+ProcXFixesCreatePointerBarrier, ProcXFixesDestroyPointerBarrier,
+/*************** Version 6 ****************/
+        ProcXFixesSelectBarrierInput,
+        ProcXFixesBarrierReleasePointer,};
 
 static int
 ProcXFixesDispatch(ClientPtr client)
@@ -201,7 +205,10 @@ static int (*SProcXFixesVector[XFixesNumberRequests]) (ClientPtr) = {
 /*************** Version 4 ****************/
         SProcXFixesHideCursor, SProcXFixesShowCursor,
 /*************** Version 5 ****************/
-SProcXFixesCreatePointerBarrier, SProcXFixesDestroyPointerBarrier,};
+SProcXFixesCreatePointerBarrier, SProcXFixesDestroyPointerBarrier,
+/*************** Version 6 ****************/
+        SProcXFixesSelectBarrierInput,
+        SProcXFixesBarrierReleasePointer,};
 
 static int
 SProcXFixesDispatch(ClientPtr client)
@@ -252,6 +259,8 @@ XFixesExtensionInit(void)
             (EventSwapPtr) SXFixesSelectionNotifyEvent;
         EventSwapVector[XFixesEventBase + XFixesCursorNotify] =
             (EventSwapPtr) SXFixesCursorNotifyEvent;
+        EventSwapVector[XFixesEventBase + XFixesBarrierNotify] =
+            (EventSwapPtr) SXFixesBarrierNotifyEvent;
         SetResourceTypeErrorValue(RegionResType, XFixesErrorBase + BadRegion);
         SetResourceTypeErrorValue(PointerBarrierType,
                                   XFixesErrorBase + BadBarrier);
