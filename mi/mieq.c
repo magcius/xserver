@@ -85,7 +85,7 @@ typedef struct _EventQueue {
     mieqHandler handlers[128];  /* custom event handler */
 } EventQueueRec, *EventQueuePtr;
 
-static EventQueueRec miEventQueue;
+static EventQueueRec miEventQueue = { 0, };
 
 #ifdef XQUARTZ
 #include  <pthread.h>
@@ -134,7 +134,10 @@ mieqGrowQueue(EventQueuePtr eventQueue, size_t new_nevents)
         return FALSE;
     }
 
-    if (new_nevents <= eventQueue->nevents)
+    if (new_nevents == eventQueue->nevents)
+        return TRUE;
+
+    if (new_nevents < eventQueue->nevents)
         return FALSE;
 
     new_events = calloc(new_nevents, sizeof(EventRec));
@@ -188,7 +191,6 @@ mieqGrowQueue(EventQueuePtr eventQueue, size_t new_nevents)
 Bool
 mieqInit(void)
 {
-    memset(&miEventQueue, 0, sizeof(miEventQueue));
     miEventQueue.lastEventTime = GetTimeInMillis();
 
     if (!mieqGrowQueue(&miEventQueue, QUEUE_INITIAL_SIZE))
@@ -202,6 +204,8 @@ void
 mieqFini(void)
 {
     int i;
+
+    miEventQueue = ((EventQueueRec) { 0, });
 
     for (i = 0; i < miEventQueue.nevents; i++) {
         if (miEventQueue.events[i].events != NULL) {
