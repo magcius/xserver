@@ -1044,6 +1044,18 @@ barrier_get_direction(int x1, int y1, int x2, int y2)
     return direction;
 }
 
+static int
+mask_directions(const struct PointerBarrier * barrier,
+                int dir)
+{
+    dir = dir & 0x0f;
+    if (barrier_is_vertical(barrier))
+        dir &= ~(BarrierNegativeY | BarrierPositiveY);
+    if (barrier_is_horizontal(barrier))
+        dir &= ~(BarrierNegativeX | BarrierPositiveX);
+    return dir;
+}
+
 /**
  * Test if the barrier may block movement in the direction defined by
  * x1/y1 → x2/y2. This function only tests whether the directions could be
@@ -1056,6 +1068,8 @@ BOOL
 barrier_is_blocking_direction(const struct PointerBarrier * barrier,
                               int direction)
 {
+    direction = mask_directions(barrier, direction);
+
     /* Barriers define which way is ok, not which way is blocking */
     return (barrier->directions & direction) != direction;
 }
@@ -1258,11 +1272,7 @@ CreatePointerBarrierClient(ScreenPtr screen, ClientPtr client,
         ret->barrier.x2 = max(stuff->x1, stuff->x2);
         ret->barrier.y1 = min(stuff->y1, stuff->y2);
         ret->barrier.y2 = max(stuff->y1, stuff->y2);
-        ret->barrier.directions = stuff->directions & 0x0f;
-        if (barrier_is_horizontal(&ret->barrier))
-            ret->barrier.directions &= ~(BarrierPositiveX | BarrierNegativeX);
-        if (barrier_is_vertical(&ret->barrier))
-            ret->barrier.directions &= ~(BarrierPositiveY | BarrierNegativeY);
+        ret->barrier.directions = mask_directions(&ret->barrier, stuff->directions);
         xorg_list_add(&ret->entry, &cs->barriers);
     }
 
