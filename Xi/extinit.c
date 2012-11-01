@@ -252,7 +252,8 @@ static int (*ProcIVector[]) (ClientPtr) = {
         ProcXIChangeProperty,   /* 57 */
         ProcXIDeleteProperty,   /* 58 */
         ProcXIGetProperty,      /* 59 */
-        ProcXIGetSelectedEvents /* 60 */
+        ProcXIGetSelectedEvents, /* 60 */
+        ProcXIBarrierReleasePointer /* 61 */
 };
 
 /* For swapped clients */
@@ -317,7 +318,8 @@ static int (*SProcIVector[]) (ClientPtr) = {
         SProcXIChangeProperty,  /* 57 */
         SProcXIDeleteProperty,  /* 58 */
         SProcXIGetProperty,     /* 59 */
-        SProcXIGetSelectedEvents        /* 60 */
+        SProcXIGetSelectedEvents,       /* 60 */
+        SProcXIBarrierReleasePointer /* 61 */
 };
 
 /*****************************************************************
@@ -840,6 +842,33 @@ STouchOwnershipEvent(xXITouchOwnershipEvent * from, xXITouchOwnershipEvent * to)
     swapl(&to->child);
 }
 
+static void
+SBarrierNotifyEvent(xXIBarrierNotifyEvent * from,
+                    xXIBarrierNotifyEvent * to) {
+    to->type = from->type;
+
+    cpswaps(from->x, to->x);
+    cpswaps(from->y, to->y);
+    cpswaps(from->dt, to->dt);
+    cpswapl(from->length, to->length);
+    cpswapl(from->time, to->time);
+
+    cpswaps(from->event_id, to->event_id);
+    cpswapl(from->barrier, to->barrier);
+    cpswapl(from->window, to->window);
+
+#define SWAP_FP3232(x, y)                       \
+    do {                                        \
+        cpswapl((x).integral, (y).integral);    \
+        cpswapl((x).frac, (y).frac);            \
+    } while(0)
+
+    SWAP_FP3232(from->dx, to->dx);
+    SWAP_FP3232(from->dy, to->dy);
+    SWAP_FP3232(from->raw_dx, to->raw_dx);
+    SWAP_FP3232(from->raw_dy, to->raw_dy);
+}
+
 /** Event swapping function for XI2 events. */
 void
 XI2EventSwap(xGenericEvent *from, xGenericEvent *to)
@@ -885,6 +914,11 @@ XI2EventSwap(xGenericEvent *from, xGenericEvent *to)
     case XI_RawTouchUpdate:
     case XI_RawTouchEnd:
         SRawEvent((xXIRawEvent *) from, (xXIRawEvent *) to);
+        break;
+    case XI_BarrierHitNotify:
+    case XI_BarrierPointerReleasedNotify:
+        SBarrierNotifyEvent((xXIBarrierNotifyEvent *) from,
+                            (xXIBarrierNotifyEvent *) to);
         break;
     default:
         ErrorF("[Xi] Unknown event type to swap. This is a bug.\n");
