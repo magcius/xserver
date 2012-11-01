@@ -56,6 +56,8 @@
 #include "xace.h"
 #include "list.h"
 #include "exglobals.h"
+#include "eventstr.h"
+#include "mi.h"
 
 RESTYPE PointerBarrierType;
 
@@ -67,10 +69,16 @@ typedef struct PointerBarrierClient *PointerBarrierClientPtr;
 
 struct PointerBarrierClient {
     ScreenPtr screen;
+    WindowPtr window;
     struct PointerBarrier barrier;
     struct xorg_list entry;
     int num_devices;
     int device_ids[0]; /* num_devices */
+    Time last_timestamp;
+    int barrier_event_id;
+    int release_event_id;
+    Bool hit;
+    Bool last_hit;
 };
 
 typedef struct _BarrierScreen {
@@ -241,7 +249,7 @@ barrier_blocks_device(struct PointerBarrierClient *client,
 }
 
 /**
- * Find the nearest barrier that is blocking movement from x1/y1 to x2/y2.
+ * Find the nearest barrier client that is blocking movement from x1/y1 to x2/y2.
  *
  * @param dir Only barriers blocking movement in direction dir are checked
  * @param x1 X start coordinate of movement vector
@@ -250,13 +258,12 @@ barrier_blocks_device(struct PointerBarrierClient *client,
  * @param y2 Y end coordinate of movement vector
  * @return The barrier nearest to the movement origin that blocks this movement.
  */
-static struct PointerBarrier *
+static struct PointerBarrierClient *
 barrier_find_nearest(BarrierScreenPtr cs, DeviceIntPtr dev,
                      int dir,
                      int x1, int y1, int x2, int y2)
 {
-    struct PointerBarrierClient *c;
-    struct PointerBarrier *nearest = NULL;
+    struct PointerBarrierClient *c, *nearest = NULL;
     double min_distance = INT_MAX;      /* can't get higher than that in X anyway */
 
     xorg_list_for_each_entry(c, &cs->barriers, entry) {
@@ -272,7 +279,7 @@ barrier_find_nearest(BarrierScreenPtr cs, DeviceIntPtr dev,
         if (barrier_is_blocking(b, x1, y1, x2, y2, &distance)) {
             if (min_distance > distance) {
                 min_distance = distance;
-                nearest = b;
+                nearest = c;
             }
         }
     }
@@ -308,16 +315,26 @@ barrier_clamp_to_barrier(struct PointerBarrier *barrier, int dir, int *x,
 
 static void
 BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
-                             int *x, int *y)
+                             int *x, int *y, int unclamped_x, int unclamped_y)
 {
     BarrierScreenPtr cs = GetBarrierScreen(screen);
 
     if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev) &&
         mode == Relative) {
         int ox, oy;
+        int dx, dy;
         int dir;
-        int i;
         struct PointerBarrier *nearest = NULL;
+        PointerBarrierClientPtr c;
+        Time ms = GetTimeInMillis();
+        BarrierEvent ev = {
+            .header = ET_Internal,
+            .type = ET_BarrierNotify,
+            .length = sizeof (BarrierEvent),
+            .time = ms,
+            .deviceid = dev->id,
+            .sourceid = dev->id,
+        };
 
         /* where are we coming from */
         miPointerGetPosition(dev, &ox, &oy);
@@ -330,29 +347,68 @@ BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
          * destination, again finding the nearest barrier and clamping.
          */
         dir = barrier_get_direction(ox, oy, *x, *y);
+        dx = unclamped_x - ox;
+        dy = unclamped_y - oy;
 
 #define MAX_BARRIERS 2
         for (i = 0; i < MAX_BARRIERS; i++) {
-            nearest = barrier_find_nearest(cs, dev, dir, ox, oy, *x, *y);
-            if (!nearest)
+            c = barrier_find_nearest(cs, dev, dir, ox, oy, *x, *y);
+            if (!c)
                 break;
 
-            barrier_clamp_to_barrier(nearest, dir, x, y);
+            nearest = &c->barrier;
 
-            if (barrier_is_vertical(nearest)) {
-                dir &= ~(BarrierNegativeX | BarrierPositiveX);
-                ox = *x;
+            if (!c->last_hit) {
+                /* This is the start of a new barrier event */
+                c->barrier_event_id++;
             }
-            else if (barrier_is_horizontal(nearest)) {
-                dir &= ~(BarrierNegativeY | BarrierPositiveY);
-                oy = *y;
+
+            if (c->barrier_event_id == c->release_event_id) {
+                ev.event_type = XI_BarrierPointerReleasedNotify;
+            } else {
+                ev.event_type = XI_BarrierHitNotify;
+
+                barrier_clamp_to_barrier(nearest, dir, x, y);
+                c->hit = TRUE;
+
+                if (barrier_is_vertical(nearest)) {
+                    dir &= ~(BarrierNegativeX | BarrierPositiveX);
+                    ox = *x;
+                }
+                else if (barrier_is_horizontal(nearest)) {
+                    dir &= ~(BarrierNegativeY | BarrierPositiveY);
+                    oy = *y;
+                }
             }
+
+            ev.event_id = c->barrier_event_id;
+            ev.barrierid = nearest->id;
+
+            ev.x = *x;
+            ev.y = *y;
+            ev.dx = dx;
+            ev.dy = dy;
+
+            /* FIXME: add proper raw dx/dy */
+            ev.raw_dx = dx;
+            ev.raw_dy = dy;
+
+            ev.dt = ms - c->last_timestamp;
+            ev.window = c->window->drawable.id;
+            c->last_timestamp = ms;
+
+            mieqEnqueue(dev, (InternalEvent *) &ev);
+        }
+
+        xorg_list_for_each_entry(c, &cs->barriers, entry) {
+            c->last_hit = c->hit;
+            c->hit = FALSE;
         }
     }
 
     if (cs->ConstrainCursorHarder) {
         screen->ConstrainCursorHarder = cs->ConstrainCursorHarder;
-        screen->ConstrainCursorHarder(dev, screen, mode, x, y);
+        screen->ConstrainCursorHarder(dev, screen, mode, x, y, unclamped_x, unclamped_y);
         screen->ConstrainCursorHarder = BarrierConstrainCursorHarder;
     }
 }
@@ -378,7 +434,7 @@ CreatePointerBarrierClient(ClientPtr client,
         return BadAlloc;
     }
 
-    err = dixLookupWindow(&pWin, stuff->window, client, DixReadAccess);
+    err = dixLookupWindow(&pWin, stuff->window, client, DixSendAccess);
     if (err != Success) {
         client->errorValue = stuff->window;
         goto error;
@@ -388,6 +444,7 @@ CreatePointerBarrierClient(ClientPtr client,
     cs = GetBarrierScreen(screen);
 
     ret->screen = screen;
+    ret->window = pWin;
     ret->num_devices = stuff->num_devices;
 
     in_devices = (CARD16 *) &stuff[1];
@@ -410,6 +467,11 @@ CreatePointerBarrierClient(ClientPtr client,
         ret->device_ids[i] = device_id;
     }
 
+    ret->barrier.id = stuff->barrier;
+    ret->barrier_event_id = 0;
+    ret->release_event_id = 0;
+    ret->hit = FALSE;
+    ret->last_hit = FALSE;
     ret->barrier.x1 = min(stuff->x1, stuff->x2);
     ret->barrier.x2 = max(stuff->x1, stuff->x2);
     ret->barrier.y1 = min(stuff->y1, stuff->y2);

@@ -1871,7 +1871,7 @@ xf86CrtcSetScanoutPixmap(RRCrtcPtr randr_crtc, PixmapPtr pixmap)
 }
 
 static void
-xf86RandR13ConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode, int *x, int *y)
+xf86RandR13ConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode, int *x, int *y, int unclamped_x, int unclamped_y)
 {
     XF86RandRInfoPtr randrp = XF86RANDRINFO(screen);
 
@@ -1880,7 +1880,7 @@ xf86RandR13ConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode, i
 
     if (randrp->orig_ConstrainCursorHarder) {
         screen->ConstrainCursorHarder = randrp->orig_ConstrainCursorHarder;
-        screen->ConstrainCursorHarder(dev, screen, mode, x, y);
+        screen->ConstrainCursorHarder(dev, screen, mode, x, y, unclamped_x, unclamped_y);
         screen->ConstrainCursorHarder = xf86RandR13ConstrainCursorHarder;
     }
 }

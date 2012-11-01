@@ -704,7 +704,7 @@ int
  ProcRRSetPanning(ClientPtr client);
 
 void
- RRConstrainCursorHarder(DeviceIntPtr, ScreenPtr, int, int *, int *);
+ RRConstrainCursorHarder(DeviceIntPtr, ScreenPtr, int, int *, int *, int, int);
 
 /* rrdispatch.c */
 extern _X_EXPORT Bool

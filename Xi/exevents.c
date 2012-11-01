@@ -1649,6 +1649,46 @@ ProcessTouchEvent(InternalEvent *ev, DeviceIntPtr dev)
         UpdateDeviceState(dev, &ev->device_event);
 }
 
+#define INT_TO_FP3232(x) ((FP3232) { (x), 0 })
+
+static void
+ProcessBarrierEvent(InternalEvent *e, DeviceIntPtr dev)
+{
+    Mask filter;
+    WindowPtr pWin;
+    BarrierEvent *be = &e->barrier_event;
+    xXIBarrierNotifyEvent ev = {
+        .type = GenericEvent,
+        .extension = IReqCode,
+        .sequenceNumber = 0,
+        .length = 9,
+        .evtype = be->event_type,
+        .window = be->window,
+        .deviceid = dev->id,
+        .time = be->time,
+        .x = be->x,
+        .y = be->y,
+        .dx = INT_TO_FP3232(be->dx),
+        .dy = INT_TO_FP3232(be->dy),
+        .raw_dx = INT_TO_FP3232(be->raw_dx),
+        .raw_dy = INT_TO_FP3232(be->raw_dy),
+        .dt = be->dt,
+        .event_id = be->event_id,
+        .barrier = be->barrierid,
+    };
+
+    if (!IsMaster(dev))
+        return;
+
+    if (dixLookupWindow(&pWin, be->window, serverClient, DixReadAccess) != Success)
+        return;
+
+    filter = GetEventFilter(dev, (xEvent *) &ev);
+
+    DeliverEventsToWindow(dev, pWin, (xEvent *) &ev, 1,
+                          filter, NullGrab);
+}
+
 /**
  * Process DeviceEvents and DeviceChangedEvents.
  */
@@ -1797,6 +1837,9 @@ ProcessOtherEvent(InternalEvent *ev, DeviceIntPtr device)
     case ET_TouchOwnership:
     case ET_TouchEnd:
         ProcessTouchEvent(ev, device);
+        break;
+    case ET_BarrierNotify:
+        ProcessBarrierEvent(ev, device);
         break;
     default:
         ProcessDeviceEvent(ev, device);
