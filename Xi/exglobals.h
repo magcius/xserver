@@ -82,4 +82,8 @@ extern DevPrivateKeyRec XIClientPrivateKeyRec;
 
 #define XIClientPrivateKey (&XIClientPrivateKeyRec)
 
+extern DevPrivateKeyRec XIScreenPrivateKeyRec;
+
+#define XIScreenPrivateKey (&XIScreenPrivateKeyRec)
+
 #endif                          /* EXGLOBALS_H */

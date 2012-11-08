@@ -1293,6 +1293,10 @@ XInputExtensionInit(void)
         (&XIClientPrivateKeyRec, PRIVATE_CLIENT, sizeof(XIClientRec)))
         FatalError("Cannot request private for XI.\n");
 
+    if (!dixRegisterPrivateKey
+        (&XIScreenPrivateKeyRec, PRIVATE_SCREEN, sizeof(XIScreenRec)))
+        FatalError("Cannot request private for XI.\n");
+
     if (!AddCallback(&ClientStateCallback, XIClientCallback, 0))
         FatalError("Failed to add callback to XI.\n");
 

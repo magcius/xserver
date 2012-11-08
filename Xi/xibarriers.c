@@ -61,10 +61,6 @@
 
 RESTYPE PointerBarrierType;
 
-static DevPrivateKeyRec BarrierScreenPrivateKeyRec;
-
-#define BarrierScreenPrivateKey (&BarrierScreenPrivateKeyRec)
-
 typedef struct PointerBarrierClient *PointerBarrierClientPtr;
 
 struct PointerBarrierClient {
@@ -586,9 +582,6 @@ Bool
 XIBarrierInit(void)
 {
     int i;
-
-    if (!dixRegisterPrivateKey(&BarrierScreenPrivateKeyRec, PRIVATE_SCREEN, 0))
-        return FALSE;
 
     for (i = 0; i < screenInfo.numScreens; i++) {
         ScreenPtr pScreen = screenInfo.screens[i];
