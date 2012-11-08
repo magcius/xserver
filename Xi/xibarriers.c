@@ -267,6 +267,9 @@ barrier_find_nearest(BarrierScreenPtr cs, DeviceIntPtr dev,
         struct PointerBarrier *b = &c->barrier;
         double distance;
 
+        if (c->hit)
+            continue;
+
         if (!barrier_is_blocking_direction(b, dir))
             continue;
 
@@ -326,7 +329,6 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
     if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev)) {
         int dir;
-        int i;
         int dx, dy;
         struct PointerBarrier *nearest = NULL;
         PointerBarrierClientPtr c;
@@ -352,8 +354,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
          */
         dir = barrier_get_direction(original_x, original_y, x, y);
 
-#define MAX_BARRIERS 2
-        for (i = 0; i < MAX_BARRIERS; i++) {
+        while (dir != 0) {
             c = barrier_find_nearest(cs, dev, dir, original_x, original_y, x, y);
             if (!c)
                 break;
