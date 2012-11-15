@@ -350,6 +350,14 @@ BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
          * destination, again finding the nearest barrier and clamping.
          */
         dir = barrier_get_direction(ox, oy, *x, *y);
+
+        /* HACK for "move 0, 0": subpixel pointer motion;
+         * we'll need to have a special hook to allow for
+         * floating-point coords. Garbage demo code for now. */
+        if (dir == 0) {
+            goto out;
+        }
+
         dx = unclamped_x - ox;
         dy = unclamped_y - oy;
 
@@ -408,6 +416,7 @@ BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
         }
     }
 
+ out:
     if (cs->ConstrainCursorHarder) {
         screen->ConstrainCursorHarder = cs->ConstrainCursorHarder;
         screen->ConstrainCursorHarder(dev, screen, mode, x, y, unclamped_x, unclamped_y);
