@@ -120,7 +120,7 @@ struct PointerBarrierClient {
     struct PointerBarrier barrier;
     struct xorg_list entry;
     int num_devices;
-    int *device_ids; /* num_devices */
+    int device_ids[0]; /* num_devices */
 };
 
 /*
