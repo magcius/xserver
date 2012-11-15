@@ -40,9 +40,11 @@ XIDestroyPointerBarrier(ClientPtr client,
 Bool
 XIBarrierInit(void);
 
+void
+XIBarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen,
+                               double original_x, double original_y,
+                               double clamped_x, double clamped_y,
+                               double unclamped_x, double unclamped_y,
+                               double *out_x, double *out_y);
+
 #endif /* _XIBARRIERS_H_ */
-
-
-
-
-

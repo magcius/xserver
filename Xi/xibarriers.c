@@ -316,16 +316,17 @@ barrier_clamp_to_barrier(struct PointerBarrier *barrier, int dir, int *x,
     }
 }
 
-static void
-BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
-                             int *x, int *y, int unclamped_x, int unclamped_y)
+void
+XIBarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen,
+                               double original_x, double original_y,
+                               double clamped_x, double clamped_y,
+                               double unclamped_x, double unclamped_y,
+                               double *out_x, double *out_y)
 {
     BarrierScreenPtr cs = GetBarrierScreen(screen);
 
-    if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev) &&
-        mode == Relative) {
-        int ox, oy;
-        int dx, dy;
+    if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev)) {
+        double dx, dy;
         int dir;
         struct PointerBarrier *nearest = NULL;
         PointerBarrierClientPtr c;
@@ -339,9 +340,6 @@ BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
             .sourceid = dev->id,
         };
 
-        /* where are we coming from */
-        miPointerGetPosition(dev, &ox, &oy);
-
         /* How this works:
          * Given the origin and the movement vector, get the nearest barrier
          * to the origin that is blocking the movement.
@@ -349,7 +347,7 @@ BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
          * Then, check from the clamped intersection to the original
          * destination, again finding the nearest barrier and clamping.
          */
-        dir = barrier_get_direction(ox, oy, *x, *y);
+        dir = barrier_get_direction(original_x, original_y, unclamped_x, unclamped_y);
 
         /* HACK for "move 0, 0": subpixel pointer motion;
          * we'll need to have a special hook to allow for
@@ -358,11 +356,11 @@ BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
             goto out;
         }
 
-        dx = unclamped_x - ox;
-        dy = unclamped_y - oy;
+        dx = unclamped_x - original_x;
+        dy = unclamped_y - original_y;
 
         while (dir != 0) {
-            c = barrier_find_nearest(cs, dev, dir, ox, oy, *x, *y);
+            c = barrier_find_nearest(cs, dev, dir, original_x, original_y, unclamped_x, unclamped_y);
             if (!c)
                 break;
 
@@ -378,24 +376,24 @@ BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
             } else {
                 ev.event_type = XI_BarrierHitNotify;
 
-                barrier_clamp_to_barrier(nearest, dir, x, y);
+                barrier_clamp_to_barrier(nearest, dir, out_x, out_y);
                 c->hit = TRUE;
 
                 if (barrier_is_vertical(nearest)) {
                     dir &= ~(BarrierNegativeX | BarrierPositiveX);
-                    ox = *x;
+                    original_x = *out_x;
                 }
                 else if (barrier_is_horizontal(nearest)) {
                     dir &= ~(BarrierNegativeY | BarrierPositiveY);
-                    oy = *y;
+                    original_y = *out_y;
                 }
             }
 
             ev.event_id = c->barrier_event_id;
             ev.barrierid = nearest->id;
 
-            ev.x = *x;
-            ev.y = *y;
+            ev.x = *out_x;
+            ev.y = *out_y;
             ev.dx = dx;
             ev.dy = dy;
 
@@ -417,11 +415,6 @@ BarrierConstrainCursorHarder(DeviceIntPtr dev, ScreenPtr screen, int mode,
     }
 
  out:
-    if (cs->ConstrainCursorHarder) {
-        screen->ConstrainCursorHarder = cs->ConstrainCursorHarder;
-        screen->ConstrainCursorHarder(dev, screen, mode, x, y, unclamped_x, unclamped_y);
-        screen->ConstrainCursorHarder = BarrierConstrainCursorHarder;
-    }
 }
 
 static int
