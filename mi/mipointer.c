@@ -571,6 +571,8 @@ miPointerSetPosition(DeviceIntPtr pDev, int mode, double *screenx,
     ScreenPtr pScreen;
     ScreenPtr newScreen;
     int x, y;
+    int unclamped_x, unclamped_y;
+    int original_x, original_y;
     Bool switch_screen = FALSE;
 
     miPointerPtr pPointer;
@@ -587,6 +589,12 @@ miPointerSetPosition(DeviceIntPtr pDev, int mode, double *screenx,
      * Pointer->limits */
     x -= pScreen->x;
     y -= pScreen->y;
+
+    unclamped_x = x;
+    unclamped_y = y;
+
+    original_x = MIPOINTER(pDev)->x;
+    original_y = MIPOINTER(pDev)->y;
 
     if (switch_screen) {
         pScreenPriv = GetScreenPrivate(pScreen);
@@ -615,6 +623,19 @@ miPointerSetPosition(DeviceIntPtr pDev, int mode, double *screenx,
 
     if (pScreen->ConstrainCursorHarder)
         pScreen->ConstrainCursorHarder(pDev, pScreen, mode, &x, &y);
+
+    if (mode == Relative) {
+        int constrained_x, constrained_y;
+
+        input_constrain_cursor(pDev, pScreen,
+                               original_x, original_y,
+                               unclamped_x, unclamped_y,
+                               x, y,
+                               &constrained_x, &constrained_y);
+
+        x = constrained_x;
+        y = constrained_y;
+    }
 
     if (pPointer->x != x || pPointer->y != y || pPointer->pScreen != pScreen)
         miPointerMoveNoEvent(pDev, pScreen, x, y);
