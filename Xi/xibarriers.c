@@ -401,7 +401,6 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
                 barrier_clamp_to_barrier(nearest, dir, &x, &y);
                 c->hit = TRUE;
-                c->seen = TRUE;
 
                 if (barrier_is_vertical(nearest)) {
                     dir &= ~(BarrierNegativeX | BarrierPositiveX);
@@ -412,6 +411,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
                     original_y = y;
                 }
             }
+            c->seen = TRUE;
 
             ev.event_id = c->barrier_event_id;
             ev.barrierid = c->id;
