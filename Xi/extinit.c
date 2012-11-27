@@ -917,7 +917,7 @@ XI2EventSwap(xGenericEvent *from, xGenericEvent *to)
         break;
     case XI_BarrierHitNotify:
     case XI_BarrierPointerReleasedNotify:
-    case XI_BarrierNewEventNotify:
+    case XI_BarrierLeaveNotify:
         SBarrierNotifyEvent((xXIBarrierNotifyEvent *) from,
                             (xXIBarrierNotifyEvent *) to);
         break;

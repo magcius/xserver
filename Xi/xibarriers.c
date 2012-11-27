@@ -433,7 +433,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
              * start of a new event ID. */
             c->barrier_event_id++;
 
-            ev.event_type = XI_BarrierNewEventNotify;
+            ev.event_type = XI_BarrierLeaveNotify;
 
             ev.event_id = c->barrier_event_id;
             ev.barrierid = c->id;
