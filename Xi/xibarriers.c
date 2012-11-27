@@ -402,15 +402,15 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
                 barrier_clamp_to_barrier(nearest, dir, &x, &y);
                 c->hit = TRUE;
                 c->seen = TRUE;
-            }
 
-            if (barrier_is_vertical(nearest)) {
-                dir &= ~(BarrierNegativeX | BarrierPositiveX);
-                original_x = x;
-            }
-            else if (barrier_is_horizontal(nearest)) {
-                dir &= ~(BarrierNegativeY | BarrierPositiveY);
-                original_y = y;
+                if (barrier_is_vertical(nearest)) {
+                    dir &= ~(BarrierNegativeX | BarrierPositiveX);
+                    original_x = x;
+                }
+                else if (barrier_is_horizontal(nearest)) {
+                    dir &= ~(BarrierNegativeY | BarrierPositiveY);
+                    original_y = y;
+                }
             }
 
             ev.event_id = c->barrier_event_id;
