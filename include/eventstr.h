@@ -237,8 +237,6 @@ struct _BarrierEvent {
     int sourceid;         /**< The physical source device */
     int barrierid;
     Window window;
-    int16_t x;
-    int16_t y;
     double dx;
     double dy;
     double raw_dx;
