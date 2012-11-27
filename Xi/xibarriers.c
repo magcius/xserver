@@ -389,11 +389,6 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
             nearest = &c->barrier;
 
-            if (!c->hit) {
-                /* This is the start of a new barrier event */
-                c->barrier_event_id++;
-            }
-
             if (c->barrier_event_id == c->release_event_id) {
                 ev.event_type = XI_BarrierPointerReleasedNotify;
             } else {
@@ -434,8 +429,12 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
         xorg_list_for_each_entry(c, &cs->barriers, entry) {
             c->seen = FALSE;
-            if (c->hit && !barrier_inside_hit_box(&c->barrier, x, y))
+            if (c->hit && !barrier_inside_hit_box(&c->barrier, x, y)) {
                 c->hit = FALSE;
+                /* If we've left the hit box, this is the
+                 * start of a new event ID. */
+                c->barrier_event_id++;
+            }
         }
     }
 
@@ -502,7 +501,7 @@ CreatePointerBarrierClient(ClientPtr client,
     }
 
     ret->id = stuff->barrier;
-    ret->barrier_event_id = 0;
+    ret->barrier_event_id = 1;
     ret->release_event_id = 0;
     ret->hit = FALSE;
     ret->seen = FALSE;
