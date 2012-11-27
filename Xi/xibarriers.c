@@ -642,7 +642,8 @@ ProcXIBarrierReleasePointer(ClientPtr client)
         }
 
         barrier = container_of(b, struct PointerBarrierClient, barrier);
-        barrier->release_event_id = event_id;
+        if (barrier->barrier_event_id == event_id)
+            barrier->release_event_id = event_id;
     }
 
     return Success;
