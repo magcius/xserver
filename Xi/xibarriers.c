@@ -629,9 +629,13 @@ ProcXIBarrierReleasePointer(ClientPtr client)
     p = (CARD32 *) &stuff[1];
     for (i = 0; i < stuff->num_barriers; i++) {
         CARD32 barrier_id, event_id;
+        _X_UNUSED CARD32 device_id;
 
         barrier_id = *(p++);
         event_id = *(p++);
+
+        /* FIXME: per-device releases */
+        device_id = *(p++);
 
         err = dixLookupResourceByType((void **) &b, barrier_id,
                                       PointerBarrierType, client, DixReadAccess);
