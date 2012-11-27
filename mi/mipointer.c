@@ -571,7 +571,6 @@ miPointerSetPosition(DeviceIntPtr pDev, int mode, double *screenx,
     ScreenPtr pScreen;
     ScreenPtr newScreen;
     int x, y;
-    int original_x, original_y;
     Bool switch_screen = FALSE;
 
     miPointerPtr pPointer;
@@ -589,11 +588,12 @@ miPointerSetPosition(DeviceIntPtr pDev, int mode, double *screenx,
     x -= pScreen->x;
     y -= pScreen->y;
 
-    original_x = MIPOINTER(pDev)->x;
-    original_y = MIPOINTER(pDev)->y;
-
     if (mode == Relative) {
         int constrained_x, constrained_y;
+        int original_x, original_y;
+
+        original_x = MIPOINTER(pDev)->x - pScreen->y;
+        original_y = MIPOINTER(pDev)->y - pScreen->x;
 
         input_constrain_cursor(pDev, pScreen,
                                original_x, original_y, x, y,
