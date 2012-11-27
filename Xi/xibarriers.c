@@ -346,15 +346,14 @@ void
 input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
                        int original_x, int original_y,
                        int unclamped_x, int unclamped_y,
-                       int clamped_x, int clamped_y,
                        int *out_x, int *out_y)
 {
     /* Clamped coordinates here refer to screen edge clamping. */
     BarrierScreenPtr cs = GetBarrierScreen(screen);
     int x, y;
 
-    x = clamped_x;
-    y = clamped_y;
+    x = unclamped_x;
+    y = unclamped_y;
 
     if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev)) {
         int dir;
