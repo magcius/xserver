@@ -357,7 +357,6 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
     if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev)) {
         int dir;
-        int dx, dy;
         struct PointerBarrier *nearest = NULL;
         PointerBarrierClientPtr c;
         Time ms = GetTimeInMillis();
@@ -368,10 +367,13 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
             .time = ms,
             .deviceid = dev->id,
             .sourceid = dev->id,
+            .dx = unclamped_x - original_x,
+            .dy = unclamped_y - original_y,
         };
 
-        dx = unclamped_x - original_x;
-        dy = unclamped_y - original_y;
+        /* FIXME: add proper raw dx/dy */
+        ev.raw_dx = ev.dx;
+        ev.raw_dy = ev.dy;
 
         /* How this works:
          * Given the origin and the movement vector, get the nearest barrier
@@ -413,12 +415,6 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
             ev.x = x;
             ev.y = y;
-            ev.dx = dx;
-            ev.dy = dy;
-
-            /* FIXME: add proper raw dx/dy */
-            ev.raw_dx = dx;
-            ev.raw_dy = dy;
 
             ev.dt = ms - c->last_timestamp;
             ev.window = c->window->drawable.id;
