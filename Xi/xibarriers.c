@@ -435,6 +435,20 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
             /* If we've left the hit box, this is the
              * start of a new event ID. */
             c->barrier_event_id++;
+
+            ev.event_type = XI_BarrierNewEventNotify;
+
+            ev.event_id = c->barrier_event_id;
+            ev.barrierid = c->id;
+
+            ev.x = x;
+            ev.y = y;
+
+            ev.dt = ms - c->last_timestamp;
+            ev.window = c->window->drawable.id;
+            c->last_timestamp = ms;
+
+            mieqEnqueue(dev, (InternalEvent *) &ev);
         }
     }
 
