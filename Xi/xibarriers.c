@@ -351,7 +351,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         Time ms = GetTimeInMillis();
         BarrierEvent ev = {
             .header = ET_Internal,
-            .type = ET_BarrierNotify,
+            .type = ET_Barrier,
             .length = sizeof (BarrierEvent),
             .time = ms,
             .deviceid = dev->id,
@@ -381,9 +381,9 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
             nearest = &c->barrier;
 
             if (c->barrier_event_id == c->release_event_id) {
-                ev.event_type = XI_BarrierPointerReleasedNotify;
+                ev.event_type = XI_BarrierPointerReleased;
             } else {
-                ev.event_type = XI_BarrierHitNotify;
+                ev.event_type = XI_BarrierHit;
 
                 barrier_clamp_to_barrier(nearest, dir, &x, &y);
                 c->hit = TRUE;
@@ -422,7 +422,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
              * start of a new event ID. */
             c->barrier_event_id++;
 
-            ev.event_type = XI_BarrierLeaveNotify;
+            ev.event_type = XI_BarrierLeave;
 
             ev.event_id = c->barrier_event_id;
             ev.barrierid = c->id;

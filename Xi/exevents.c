@@ -1645,7 +1645,7 @@ ProcessBarrierEvent(InternalEvent *e, DeviceIntPtr dev)
     Mask filter;
     WindowPtr pWin;
     BarrierEvent *be = &e->barrier_event;
-    xXIBarrierNotifyEvent ev = {
+    xXIBarrierEvent ev = {
         .type = GenericEvent,
         .extension = IReqCode,
         .sequenceNumber = 0,
@@ -1824,7 +1824,7 @@ ProcessOtherEvent(InternalEvent *ev, DeviceIntPtr device)
     case ET_TouchEnd:
         ProcessTouchEvent(ev, device);
         break;
-    case ET_BarrierNotify:
+    case ET_Barrier:
         ProcessBarrierEvent(ev, device);
         break;
     default:

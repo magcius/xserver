@@ -843,8 +843,8 @@ STouchOwnershipEvent(xXITouchOwnershipEvent * from, xXITouchOwnershipEvent * to)
 }
 
 static void
-SBarrierNotifyEvent(xXIBarrierNotifyEvent * from,
-                    xXIBarrierNotifyEvent * to) {
+SBarrierEvent(xXIBarrierEvent * from,
+              xXIBarrierEvent * to) {
     to->type = from->type;
 
     cpswaps(from->dt, to->dt);
@@ -913,11 +913,11 @@ XI2EventSwap(xGenericEvent *from, xGenericEvent *to)
     case XI_RawTouchEnd:
         SRawEvent((xXIRawEvent *) from, (xXIRawEvent *) to);
         break;
-    case XI_BarrierHitNotify:
-    case XI_BarrierPointerReleasedNotify:
-    case XI_BarrierLeaveNotify:
-        SBarrierNotifyEvent((xXIBarrierNotifyEvent *) from,
-                            (xXIBarrierNotifyEvent *) to);
+    case XI_BarrierHit:
+    case XI_BarrierPointerReleased:
+    case XI_BarrierLeave:
+        SBarrierEvent((xXIBarrierEvent *) from,
+                      (xXIBarrierEvent *) to);
         break;
     default:
         ErrorF("[Xi] Unknown event type to swap. This is a bug.\n");
