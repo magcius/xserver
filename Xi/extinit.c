@@ -847,6 +847,8 @@ SBarrierEvent(xXIBarrierEvent * from,
               xXIBarrierEvent * to) {
     to->type = from->type;
 
+    cpswaps(from->x, to->x);
+    cpswaps(from->y, to->y);
     cpswaps(from->dt, to->dt);
     cpswapl(from->length, to->length);
     cpswapl(from->time, to->time);
