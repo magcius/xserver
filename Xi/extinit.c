@@ -847,15 +847,14 @@ SBarrierEvent(xXIBarrierEvent * from,
               xXIBarrierEvent * to) {
     to->type = from->type;
 
-    cpswaps(from->x, to->x);
-    cpswaps(from->y, to->y);
-    cpswaps(from->dt, to->dt);
     cpswapl(from->length, to->length);
     cpswapl(from->time, to->time);
-
-    cpswaps(from->event_id, to->event_id);
-    cpswapl(from->barrier, to->barrier);
+    cpswaps(from->deviceid, to->deviceid);
+    cpswaps(from->sourceid, to->sourceid);
     cpswapl(from->window, to->window);
+    cpswapl(from->root, to->root);
+    cpswaps(from->root_x, to->root_x);
+    cpswaps(from->root_y, to->root_y);
 
 #define SWAP_FP3232(x, y)                       \
     do {                                        \
@@ -867,6 +866,9 @@ SBarrierEvent(xXIBarrierEvent * from,
     SWAP_FP3232(from->dy, to->dy);
     SWAP_FP3232(from->raw_dx, to->raw_dx);
     SWAP_FP3232(from->raw_dy, to->raw_dy);
+    cpswaps(from->dt, to->dt);
+    cpswapl(from->barrier, to->barrier);
+    cpswaps(from->event_id, to->event_id);
 }
 
 /** Event swapping function for XI2 events. */
