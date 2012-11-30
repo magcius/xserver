@@ -1645,7 +1645,7 @@ ProcessBarrierEvent(InternalEvent *e, DeviceIntPtr dev)
     Mask filter;
     WindowPtr pWin;
     BarrierEvent *be = &e->barrier_event;
-    int x, y;
+    int root_x, root_y;
     xXIBarrierEvent ev = {
         .type = GenericEvent,
         .extension = IReqCode,
@@ -1665,9 +1665,9 @@ ProcessBarrierEvent(InternalEvent *e, DeviceIntPtr dev)
         .barrier = be->barrierid,
     };
 
-    GetSpritePosition(dev, &x, &y);
-    ev.x = x;
-    ev.y = y;
+    GetSpritePosition(dev, &root_x, &root_y);
+    ev.root_x = root_x;
+    ev.root_y = root_y;
 
     if (!IsMaster(dev))
         return;
