@@ -334,15 +334,15 @@ barrier_clamp_to_barrier(struct PointerBarrier *barrier, int dir, int *x,
 void
 input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
                        int current_x, int current_y,
-                       int unclamped_x, int unclamped_y,
+                       int dest_x, int dest_y,
                        int *out_x, int *out_y)
 {
     /* Clamped coordinates here refer to screen edge clamping. */
     BarrierScreenPtr cs = GetBarrierScreen(screen);
     int x, y;
 
-    x = unclamped_x;
-    y = unclamped_y;
+    x = dest_x;
+    y = dest_y;
 
     if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev)) {
         int dir;
@@ -356,8 +356,8 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
             .time = ms,
             .deviceid = dev->id,
             .sourceid = dev->id,
-            .dx = unclamped_x - current_x,
-            .dy = unclamped_y - current_y,
+            .dx = dest_x - current_x,
+            .dy = dest_y - current_y,
         };
 
         /* FIXME: add proper raw dx/dy */

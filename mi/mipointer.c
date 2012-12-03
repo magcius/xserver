@@ -589,6 +589,7 @@ miPointerSetPosition(DeviceIntPtr pDev, int mode, double *screenx,
     y -= pScreen->y;
 
     if (mode == Relative) {
+        /* coordinates after clamped to a barrier */
         int constrained_x, constrained_y;
         int current_x, current_y; /* current position in per-screen coord */
 
