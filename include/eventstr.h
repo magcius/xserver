@@ -241,6 +241,8 @@ struct _BarrierEvent {
     double dy;
     double raw_dx;
     double raw_dy;
+    double root_x;
+    double root_y;
     int16_t dt;
     int16_t event_type;
     int32_t event_id;
