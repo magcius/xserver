@@ -72,7 +72,9 @@ enum EventType {
     ET_RawTouchUpdate,
     ET_RawTouchEnd,
     ET_XQuartz,
-    ET_Barrier,
+    ET_BarrierHit,
+    ET_BarrierLeave,
+    ET_BarrierPointerReleased,
     ET_Internal = 0xFF          /* First byte */
 };
 
@@ -230,7 +232,7 @@ struct _RawDeviceEvent {
 
 struct _BarrierEvent {
     unsigned char header; /**<  Always ET_Internal */
-    enum EventType type;  /**<  ET_Barrier */
+    enum EventType type;  /**<  ET_BarrierHit, ET_BarrierLeave, ET_BarrierPointerReleased */
     int length;           /**<  Length in bytes */
     Time time;            /**<  Time in ms */
     int deviceid;         /**< Device to post this event for */
@@ -244,7 +246,6 @@ struct _BarrierEvent {
     double root_x;
     double root_y;
     int16_t dt;
-    int16_t event_type;
     int32_t event_id;
 };
 

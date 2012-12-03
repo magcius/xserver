@@ -407,7 +407,9 @@ ChangeDeviceID(DeviceIntPtr dev, InternalEvent *event)
     case ET_RawTouchUpdate:
         event->raw_event.deviceid = dev->id;
         break;
-    case ET_Barrier:
+    case ET_BarrierHit:
+    case ET_BarrierLeave:
+    case ET_BarrierPointerReleased:
         event->barrier_event.deviceid = dev->id;
         break;
     default:

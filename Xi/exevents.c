@@ -1816,7 +1816,9 @@ ProcessOtherEvent(InternalEvent *ev, DeviceIntPtr device)
     case ET_TouchEnd:
         ProcessTouchEvent(ev, device);
         break;
-    case ET_Barrier:
+    case ET_BarrierHit:
+    case ET_BarrierLeave:
+    case ET_BarrierPointerReleased:
         ProcessBarrierEvent(ev, device);
         break;
     default:
