@@ -339,102 +339,104 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 {
     /* Clamped coordinates here refer to screen edge clamping. */
     BarrierScreenPtr cs = GetBarrierScreen(screen);
-    int x, y;
+    int x = dest_x,
+        y = dest_y;
 
-    x = dest_x;
-    y = dest_y;
+    int dir;
+    struct PointerBarrier *nearest = NULL;
+    PointerBarrierClientPtr c;
+    Time ms = GetTimeInMillis();
+    BarrierEvent ev = {
+        .header = ET_Internal,
+        .type = ET_Barrier,
+        .length = sizeof (BarrierEvent),
+        .time = ms,
+        .deviceid = dev->id,
+        .sourceid = dev->id,
+        .dx = dest_x - current_x,
+        .dy = dest_y - current_y,
+    };
 
-    if (!xorg_list_is_empty(&cs->barriers) && !IsFloating(dev)) {
-        int dir;
-        struct PointerBarrier *nearest = NULL;
-        PointerBarrierClientPtr c;
-        Time ms = GetTimeInMillis();
-        BarrierEvent ev = {
-            .header = ET_Internal,
-            .type = ET_Barrier,
-            .length = sizeof (BarrierEvent),
-            .time = ms,
-            .deviceid = dev->id,
-            .sourceid = dev->id,
-            .dx = dest_x - current_x,
-            .dy = dest_y - current_y,
-        };
+    if (xorg_list_is_empty(&cs->barriers) || IsFloating(dev))
+        goto out;
 
-        /* FIXME: add proper raw dx/dy */
-        ev.raw_dx = ev.dx;
-        ev.raw_dy = ev.dy;
+    /* FIXME: add proper raw dx/dy */
+    ev.raw_dx = ev.dx;
+    ev.raw_dy = ev.dy;
 
-        /* How this works:
-         * Given the origin and the movement vector, get the nearest barrier
-         * to the origin that is blocking the movement.
-         * Clamp to that barrier.
-         * Then, check from the clamped intersection to the original
-         * destination, again finding the nearest barrier and clamping.
-         */
-        dir = barrier_get_direction(current_x, current_y, x, y);
+    /* How this works:
+     * Given the origin and the movement vector, get the nearest barrier
+     * to the origin that is blocking the movement.
+     * Clamp to that barrier.
+     * Then, check from the clamped intersection to the original
+     * destination, again finding the nearest barrier and clamping.
+     */
+    dir = barrier_get_direction(current_x, current_y, x, y);
 
-        while (dir != 0) {
-            c = barrier_find_nearest(cs, dev, dir, current_x, current_y, x, y);
-            if (!c)
-                break;
+    while (dir != 0) {
+        c = barrier_find_nearest(cs, dev, dir, current_x, current_y, x, y);
+        if (!c)
+            break;
 
-            nearest = &c->barrier;
+        nearest = &c->barrier;
 
-            if (c->barrier_event_id == c->release_event_id) {
-                ev.event_type = XI_BarrierPointerReleased;
-            } else {
-                ev.event_type = XI_BarrierHit;
+        if (c->barrier_event_id == c->release_event_id) {
+            ev.event_type = XI_BarrierPointerReleased;
+        } else {
+            ev.event_type = XI_BarrierHit;
 
-                barrier_clamp_to_barrier(nearest, dir, &x, &y);
-                c->hit = TRUE;
+            barrier_clamp_to_barrier(nearest, dir, &x, &y);
+            c->hit = TRUE;
 
-                if (barrier_is_vertical(nearest)) {
-                    dir &= ~(BarrierNegativeX | BarrierPositiveX);
-                    current_x = x;
-                }
-                else if (barrier_is_horizontal(nearest)) {
-                    dir &= ~(BarrierNegativeY | BarrierPositiveY);
-                    current_y = y;
-                }
+            if (barrier_is_vertical(nearest)) {
+                dir &= ~(BarrierNegativeX | BarrierPositiveX);
+                current_x = x;
             }
-            c->seen = TRUE;
-
-            ev.event_id = c->barrier_event_id;
-            ev.barrierid = c->id;
-
-            ev.dt = ms - c->last_timestamp;
-            ev.window = c->window->drawable.id;
-            c->last_timestamp = ms;
-
-            mieqEnqueue(dev, (InternalEvent *) &ev);
+            else if (barrier_is_horizontal(nearest)) {
+                dir &= ~(BarrierNegativeY | BarrierPositiveY);
+                current_y = y;
+            }
         }
+        c->seen = TRUE;
 
-        xorg_list_for_each_entry(c, &cs->barriers, entry) {
-            c->seen = FALSE;
-            if (!c->hit)
-                continue;
+        ev.event_id = c->barrier_event_id;
+        ev.barrierid = c->id;
 
-            if (barrier_inside_hit_box(&c->barrier, x, y))
-                continue;
+        ev.dt = ms - c->last_timestamp;
+        ev.window = c->window->drawable.id;
+        c->last_timestamp = ms;
 
-            c->hit = FALSE;
-            /* If we've left the hit box, this is the
-             * start of a new event ID. */
-            c->barrier_event_id++;
-
-            ev.event_type = XI_BarrierLeave;
-
-            ev.event_id = c->barrier_event_id;
-            ev.barrierid = c->id;
-
-            ev.dt = ms - c->last_timestamp;
-            ev.window = c->window->drawable.id;
-            c->last_timestamp = ms;
-
-            mieqEnqueue(dev, (InternalEvent *) &ev);
-        }
+        /* FIXME: return the event, don't enqueue it here */
+        mieqEnqueue(dev, (InternalEvent *) &ev);
     }
 
+    xorg_list_for_each_entry(c, &cs->barriers, entry) {
+        c->seen = FALSE;
+        if (!c->hit)
+            continue;
+
+        if (barrier_inside_hit_box(&c->barrier, x, y))
+            continue;
+
+        c->hit = FALSE;
+        /* If we've left the hit box, this is the
+         * start of a new event ID. */
+        c->barrier_event_id++;
+
+        ev.event_type = XI_BarrierLeave;
+
+        ev.event_id = c->barrier_event_id;
+        ev.barrierid = c->id;
+
+        ev.dt = ms - c->last_timestamp;
+        ev.window = c->window->drawable.id;
+        c->last_timestamp = ms;
+
+        /* FIXME: return the event, don't enqueue it here */
+        mieqEnqueue(dev, (InternalEvent *) &ev);
+    }
+
+out:
     *out_x = x;
     *out_y = y;
 }
