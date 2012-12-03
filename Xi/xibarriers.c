@@ -335,7 +335,8 @@ void
 input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
                        int current_x, int current_y,
                        int dest_x, int dest_y,
-                       int *out_x, int *out_y)
+                       int *out_x, int *out_y,
+                       int *nevents, InternalEvent* events)
 {
     /* Clamped coordinates here refer to screen edge clamping. */
     BarrierScreenPtr cs = GetBarrierScreen(screen);
@@ -356,6 +357,10 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         .dx = dest_x - current_x,
         .dy = dest_y - current_y,
     };
+    InternalEvent *barrier_events = events;
+
+    if (nevents)
+        *nevents = 0;
 
     if (xorg_list_is_empty(&cs->barriers) || IsFloating(dev))
         goto out;
@@ -406,8 +411,9 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         ev.window = c->window->drawable.id;
         c->last_timestamp = ms;
 
-        /* FIXME: return the event, don't enqueue it here */
-        mieqEnqueue(dev, (InternalEvent *) &ev);
+        barrier_events->barrier_event = ev;
+        barrier_events++;
+        *nevents += 1;
     }
 
     xorg_list_for_each_entry(c, &cs->barriers, entry) {
@@ -432,8 +438,9 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         ev.window = c->window->drawable.id;
         c->last_timestamp = ms;
 
-        /* FIXME: return the event, don't enqueue it here */
-        mieqEnqueue(dev, (InternalEvent *) &ev);
+        barrier_events->barrier_event = ev;
+        barrier_events++;
+        *nevents += 1;
     }
 
 out:
