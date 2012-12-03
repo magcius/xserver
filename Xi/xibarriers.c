@@ -333,7 +333,7 @@ barrier_clamp_to_barrier(struct PointerBarrier *barrier, int dir, int *x,
 
 void
 input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
-                       int original_x, int original_y,
+                       int current_x, int current_y,
                        int unclamped_x, int unclamped_y,
                        int *out_x, int *out_y)
 {
@@ -356,8 +356,8 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
             .time = ms,
             .deviceid = dev->id,
             .sourceid = dev->id,
-            .dx = unclamped_x - original_x,
-            .dy = unclamped_y - original_y,
+            .dx = unclamped_x - current_x,
+            .dy = unclamped_y - current_y,
         };
 
         /* FIXME: add proper raw dx/dy */
@@ -371,10 +371,10 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
          * Then, check from the clamped intersection to the original
          * destination, again finding the nearest barrier and clamping.
          */
-        dir = barrier_get_direction(original_x, original_y, x, y);
+        dir = barrier_get_direction(current_x, current_y, x, y);
 
         while (dir != 0) {
-            c = barrier_find_nearest(cs, dev, dir, original_x, original_y, x, y);
+            c = barrier_find_nearest(cs, dev, dir, current_x, current_y, x, y);
             if (!c)
                 break;
 
@@ -390,11 +390,11 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
                 if (barrier_is_vertical(nearest)) {
                     dir &= ~(BarrierNegativeX | BarrierPositiveX);
-                    original_x = x;
+                    current_x = x;
                 }
                 else if (barrier_is_horizontal(nearest)) {
                     dir &= ~(BarrierNegativeY | BarrierPositiveY);
-                    original_y = y;
+                    current_y = y;
                 }
             }
             c->seen = TRUE;
