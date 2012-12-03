@@ -853,8 +853,8 @@ SBarrierEvent(xXIBarrierEvent * from,
     cpswaps(from->sourceid, to->sourceid);
     cpswapl(from->window, to->window);
     cpswapl(from->root, to->root);
-    cpswaps(from->root_x, to->root_x);
-    cpswaps(from->root_y, to->root_y);
+    cpswapl(from->root_x, to->root_x);
+    cpswapl(from->root_y, to->root_y);
 
 #define SWAP_FP3232(x, y)                       \
     do {                                        \
