@@ -1645,29 +1645,8 @@ ProcessBarrierEvent(InternalEvent *e, DeviceIntPtr dev)
     Mask filter;
     WindowPtr pWin;
     BarrierEvent *be = &e->barrier_event;
-    int root_x, root_y;
-    xXIBarrierEvent ev = {
-        .type = GenericEvent,
-        .extension = IReqCode,
-        .sequenceNumber = 0,
-        .length = 9,
-        .evtype = be->event_type,
-        .window = be->window,
-        .deviceid = be->deviceid,
-        .sourceid = be->sourceid,
-        .time = be->time,
-        .dx = double_to_fp3232(be->dx),
-        .dy = double_to_fp3232(be->dy),
-        .raw_dx = double_to_fp3232(be->raw_dx),
-        .raw_dy = double_to_fp3232(be->raw_dy),
-        .dt = be->dt,
-        .event_id = be->event_id,
-        .barrier = be->barrierid,
-    };
-
-    GetSpritePosition(dev, &root_x, &root_y);
-    ev.root_x = root_x;
-    ev.root_y = root_y;
+    xEvent *ev;
+    int rc;
 
     if (!IsMaster(dev))
         return;
@@ -1675,10 +1654,17 @@ ProcessBarrierEvent(InternalEvent *e, DeviceIntPtr dev)
     if (dixLookupWindow(&pWin, be->window, serverClient, DixReadAccess) != Success)
         return;
 
-    filter = GetEventFilter(dev, (xEvent *) &ev);
+    rc = EventToXI2(e, &ev);
+    if (rc != Success) {
+        ErrorF("[Xi] event conversion from %s failed with code %d\n", __func__, rc);
+        return;
+    }
 
-    DeliverEventsToWindow(dev, pWin, (xEvent *) &ev, 1,
+    filter = GetEventFilter(dev, ev);
+
+    DeliverEventsToWindow(dev, pWin, ev, 1,
                           filter, NullGrab);
+    free(ev);
 }
 
 /**
