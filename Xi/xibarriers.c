@@ -358,7 +358,6 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         .dy = dest_y - current_y,
     };
     InternalEvent *barrier_events = events;
-    int i;
     int flags = 0;
 
     if (nevents)
@@ -415,6 +414,8 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         ev.window = c->window->drawable.id;
         c->last_timestamp = ms;
 
+        /* root x/y is filled in later */
+
         barrier_events->barrier_event = ev;
         barrier_events++;
         *nevents += 1;
@@ -443,14 +444,11 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         ev.window = c->window->drawable.id;
         c->last_timestamp = ms;
 
+        /* root x/y is filled in later */
+
         barrier_events->barrier_event = ev;
         barrier_events++;
         *nevents += 1;
-    }
-
-    for (i = 0; i < *nevents; i++) {
-        events[i].barrier_event.root_x = x;
-        events[i].barrier_event.root_y = y;
     }
 
 out:
