@@ -806,6 +806,7 @@ eventToBarrierEvent(BarrierEvent *ev, xEvent **xi)
     barrier->sourceid = ev->sourceid;
     barrier->time = ev->time;
     barrier->window = ev->window;
+    barrier->root = ev->root;
     barrier->dx = double_to_fp3232(ev->dx);
     barrier->dy = double_to_fp3232(ev->dy);
     barrier->raw_dx = double_to_fp3232(ev->raw_dx);

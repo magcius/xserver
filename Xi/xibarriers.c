@@ -356,6 +356,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         .sourceid = dev->id,
         .dx = dest_x - current_x,
         .dy = dest_y - current_y,
+        .root = screen->root->drawable.id,
     };
     InternalEvent *barrier_events = events;
     int flags = 0;
