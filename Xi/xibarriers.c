@@ -359,6 +359,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
     };
     InternalEvent *barrier_events = events;
     int i;
+    int flags = 0;
 
     if (nevents)
         *nevents = 0;
@@ -387,10 +388,11 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         nearest = &c->barrier;
 
         if (c->barrier_event_id == c->release_event_id) {
-            ev.type = ET_BarrierPointerReleased;
+            ev.type = ET_BarrierLeave;
+            flags |= XIBarrierPointerReleased;
         } else {
             ev.type = ET_BarrierHit;
-
+            flags = 0;
             barrier_clamp_to_barrier(nearest, dir, &x, &y);
             c->hit = TRUE;
 
@@ -405,6 +407,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         }
         c->seen = TRUE;
 
+        ev.flags = flags;
         ev.event_id = c->barrier_event_id;
         ev.barrierid = c->id;
 
@@ -432,6 +435,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
         ev.type = ET_BarrierLeave;
 
+        ev.flags = 0;
         ev.event_id = c->barrier_event_id;
         ev.barrierid = c->id;
 

@@ -1818,7 +1818,6 @@ ProcessOtherEvent(InternalEvent *ev, DeviceIntPtr device)
         break;
     case ET_BarrierHit:
     case ET_BarrierLeave:
-    case ET_BarrierPointerReleased:
         ProcessBarrierEvent(ev, device);
         break;
     default:

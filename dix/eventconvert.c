@@ -280,7 +280,6 @@ EventToXI2(InternalEvent *ev, xEvent **xi)
         return eventToRawEvent(&ev->raw_event, xi);
     case ET_BarrierHit:
     case ET_BarrierLeave:
-    case ET_BarrierPointerReleased:
         return eventToBarrierEvent(&ev->barrier_event, xi);
     default:
         break;
@@ -807,6 +806,7 @@ eventToBarrierEvent(BarrierEvent *ev, xEvent **xi)
     barrier->raw_dx = double_to_fp3232(ev->raw_dx);
     barrier->raw_dy = double_to_fp3232(ev->raw_dy);
     barrier->dt = ev->dt;
+    barrier->flags = ev->flags;
     barrier->event_id = ev->event_id;
     barrier->barrier = ev->barrierid;
     barrier->root_x = double_to_fp1616(ev->root_x);
@@ -967,9 +967,6 @@ GetXI2Type(enum EventType type)
         break;
     case ET_BarrierLeave:
         xi2type = XI_BarrierLeave;
-        break;
-    case ET_BarrierPointerReleased:
-        xi2type = XI_BarrierPointerReleased;
         break;
     default:
         break;

@@ -74,7 +74,6 @@ enum EventType {
     ET_XQuartz,
     ET_BarrierHit,
     ET_BarrierLeave,
-    ET_BarrierPointerReleased,
     ET_Internal = 0xFF          /* First byte */
 };
 
@@ -247,6 +246,7 @@ struct _BarrierEvent {
     double root_y;
     int16_t dt;
     int32_t event_id;
+    uint32_t flags;
 };
 
 #ifdef XQUARTZ

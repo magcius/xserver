@@ -866,7 +866,7 @@ SBarrierEvent(xXIBarrierEvent * from,
     SWAP_FP3232(from->dy, to->dy);
     SWAP_FP3232(from->raw_dx, to->raw_dx);
     SWAP_FP3232(from->raw_dy, to->raw_dy);
-    cpswaps(from->dt, to->dt);
+    cpswapl(from->dt, to->dt);
     cpswapl(from->barrier, to->barrier);
     cpswaps(from->event_id, to->event_id);
 }
@@ -918,7 +918,6 @@ XI2EventSwap(xGenericEvent *from, xGenericEvent *to)
         SRawEvent((xXIRawEvent *) from, (xXIRawEvent *) to);
         break;
     case XI_BarrierHit:
-    case XI_BarrierPointerReleased:
     case XI_BarrierLeave:
         SBarrierEvent((xXIBarrierEvent *) from,
                       (xXIBarrierEvent *) to);

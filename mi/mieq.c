@@ -409,7 +409,6 @@ ChangeDeviceID(DeviceIntPtr dev, InternalEvent *event)
         break;
     case ET_BarrierHit:
     case ET_BarrierLeave:
-    case ET_BarrierPointerReleased:
         event->barrier_event.deviceid = dev->id;
         break;
     default:
