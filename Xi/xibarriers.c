@@ -359,7 +359,6 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         .root = screen->root->drawable.id,
     };
     InternalEvent *barrier_events = events;
-    int flags = 0;
 
     if (nevents)
         *nevents = 0;
@@ -387,27 +386,25 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
 
         nearest = &c->barrier;
 
-        if (c->barrier_event_id == c->release_event_id) {
-            ev.type = ET_BarrierLeave;
-            flags |= XIBarrierPointerReleased;
-        } else {
-            ev.type = ET_BarrierHit;
-            flags = 0;
-            barrier_clamp_to_barrier(nearest, dir, &x, &y);
-            c->hit = TRUE;
-
-            if (barrier_is_vertical(nearest)) {
-                dir &= ~(BarrierNegativeX | BarrierPositiveX);
-                current_x = x;
-            }
-            else if (barrier_is_horizontal(nearest)) {
-                dir &= ~(BarrierNegativeY | BarrierPositiveY);
-                current_y = y;
-            }
-        }
         c->seen = TRUE;
+        c->hit = TRUE;
 
-        ev.flags = flags;
+        if (c->barrier_event_id == c->release_event_id)
+            continue;
+
+        ev.type = ET_BarrierHit;
+        barrier_clamp_to_barrier(nearest, dir, &x, &y);
+
+        if (barrier_is_vertical(nearest)) {
+            dir &= ~(BarrierNegativeX | BarrierPositiveX);
+            current_x = x;
+        }
+        else if (barrier_is_horizontal(nearest)) {
+            dir &= ~(BarrierNegativeY | BarrierPositiveY);
+            current_y = y;
+        }
+
+        ev.flags = 0;
         ev.event_id = c->barrier_event_id;
         ev.barrierid = c->id;
 
@@ -423,6 +420,7 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
     }
 
     xorg_list_for_each_entry(c, &cs->barriers, entry) {
+        int flags = 0;
         c->seen = FALSE;
         if (!c->hit)
             continue;
@@ -431,13 +429,17 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
             continue;
 
         c->hit = FALSE;
+
+        if (c->barrier_event_id == c->release_event_id)
+            flags |= XIBarrierPointerReleased;
+
         /* If we've left the hit box, this is the
          * start of a new event ID. */
         c->barrier_event_id++;
 
         ev.type = ET_BarrierLeave;
 
-        ev.flags = 0;
+        ev.flags = flags;
         ev.event_id = c->barrier_event_id;
         ev.barrierid = c->id;
 
