@@ -620,7 +620,7 @@ XIDestroyPointerBarrier(ClientPtr client,
                         xXFixesDestroyPointerBarrierReq * stuff)
 {
     int err;
-    void *barrier;
+    struct PointerBarrierClient *barrier;
 
     err = dixLookupResourceByType((void **) &barrier, stuff->barrier,
                                   PointerBarrierType, client, DixDestroyAccess);
@@ -628,6 +628,9 @@ XIDestroyPointerBarrier(ClientPtr client,
         client->errorValue = stuff->barrier;
         return err;
     }
+
+    if (CLIENT_ID(stuff->barrier) != client->index)
+        return BadAccess;
 
     FreeResource(stuff->barrier, RT_NONE);
     return Success;
