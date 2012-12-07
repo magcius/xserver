@@ -433,15 +433,15 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
         if (c->barrier_event_id == c->release_event_id)
             flags |= XIBarrierPointerReleased;
 
-        /* If we've left the hit box, this is the
-         * start of a new event ID. */
-        c->barrier_event_id++;
-
         ev.type = ET_BarrierLeave;
 
         ev.flags = flags;
         ev.event_id = c->barrier_event_id;
         ev.barrierid = c->id;
+
+        /* If we've left the hit box, this is the
+         * start of a new event ID. */
+        c->barrier_event_id++;
 
         ev.dt = ms - c->last_timestamp;
         ev.window = c->window->drawable.id;
