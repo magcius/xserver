@@ -636,15 +636,18 @@ XIDestroyPointerBarrier(ClientPtr client,
 int
 SProcXIBarrierReleasePointer(ClientPtr client)
 {
+    xXIBarrierReleasePointerInfo *info;
     REQUEST(xXIBarrierReleasePointerReq);
     int i;
-    CARD16 *arr = (CARD16 *) &stuff[1];
+
+    info = (xXIBarrierReleasePointerInfo*) &stuff[1];
 
     swaps(&stuff->length);
     swapl(&stuff->num_barriers);
-    for (i = 0; i < stuff->num_barriers; i++) {
-        swaps(&arr[2*i]);
-        swaps(&arr[2*i+1]);
+    for (i = 0; i < stuff->num_barriers; i++, info++) {
+        swaps(&info->deviceid);
+        swapl(&info->barrier);
+        swapl(&info->eventid);
     }
 
     return (ProcXIBarrierReleasePointer(client));
@@ -655,24 +658,23 @@ ProcXIBarrierReleasePointer(ClientPtr client)
 {
     int i;
     int err;
-    CARD32 *p;
     struct PointerBarrierClient *barrier;
     struct PointerBarrier *b;
+    xXIBarrierReleasePointerInfo *info;
 
     REQUEST(xXIBarrierReleasePointerReq);
     REQUEST_AT_LEAST_SIZE(xXIBarrierReleasePointerReq);
 
-
-    p = (CARD32 *) &stuff[1];
-    for (i = 0; i < stuff->num_barriers; i++) {
+    info = (xXIBarrierReleasePointerInfo*) &stuff[1];
+    for (i = 0; i < stuff->num_barriers; i++, info++) {
         CARD32 barrier_id, event_id;
         _X_UNUSED CARD32 device_id;
 
-        barrier_id = *(p++);
-        event_id = *(p++);
+        barrier_id = info->barrier;
+        event_id = info->eventid;
 
         /* FIXME: per-device releases */
-        device_id = *(p++);
+        device_id = info->deviceid;
 
         err = dixLookupResourceByType((void **) &b, barrier_id,
                                       PointerBarrierType, client, DixReadAccess);
