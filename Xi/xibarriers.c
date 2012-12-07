@@ -366,10 +366,6 @@ input_constrain_cursor(DeviceIntPtr dev, ScreenPtr screen,
     if (xorg_list_is_empty(&cs->barriers) || IsFloating(dev))
         goto out;
 
-    /* FIXME: add proper raw dx/dy */
-    ev.raw_dx = ev.dx;
-    ev.raw_dy = ev.dy;
-
     /* How this works:
      * Given the origin and the movement vector, get the nearest barrier
      * to the origin that is blocking the movement.

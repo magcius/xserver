@@ -241,8 +241,6 @@ struct _BarrierEvent {
     Window root;
     double dx;
     double dy;
-    double raw_dx;
-    double raw_dy;
     double root_x;
     double root_y;
     int16_t dt;
